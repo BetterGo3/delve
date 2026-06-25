@@ -377,6 +377,18 @@ func (ctx *compileCtx) compileAST(t ast.Expr, toplevel bool) error {
 		return ctx.compileTypeAssert(node)
 
 	case *ast.IndexExpr:
+		if nc, ok := node.X.(*ast.NullCondExpr); ok {
+			err := ctx.compileAST(nc.X, false)
+			if err != nil {
+				return err
+			}
+			err = ctx.compileAST(node.Index, false)
+			if err != nil {
+				return err
+			}
+			ctx.pushOp(&NullCondIndex{Node: node})
+			return nil
+		}
 		return ctx.compileBinary(node.X, node.Index, nil, &Index{node})
 
 	case *ast.SliceExpr:
@@ -403,7 +415,6 @@ func (ctx *compileCtx) compileAST(t ast.Expr, toplevel bool) error {
 		case token.INC, token.DEC, token.ARROW:
 			return fmt.Errorf("operator %s not supported", node.Op.String())
 		}
-		// short circuits logical operators
 		var sop *Jump
 		switch node.Op {
 		case token.LAND:
@@ -486,6 +497,24 @@ func (ctx *compileCtx) compileAST(t ast.Expr, toplevel bool) error {
 			return notimplerr
 		}
 
+	case *ast.ForceExpr:
+		return ctx.compileAST(node.X, false)
+
+	case *ast.TryExpr:
+		return ctx.compileAST(node.X, false)
+
+	case *ast.IfExpr:
+		return fmt.Errorf("if expressions are not supported in debugger expressions")
+
+	case *ast.SwitchExpr:
+		return fmt.Errorf("switch expressions are not supported in debugger expressions")
+
+	case *ast.LambdaExpr:
+		return fmt.Errorf("lambda expressions are not supported in debugger expressions")
+
+	case *ast.EnumPatternExpr:
+		return fmt.Errorf("enum patterns are not supported in debugger expressions")
+
 	default:
 		return fmt.Errorf("expression %T not implemented", t)
 	}
@@ -524,7 +553,7 @@ func (ctx *compileCtx) compileTypeCastOrFuncCall(node *ast.CallExpr, toplevel bo
 	case *ast.BasicLit:
 		// It can only be a ("type string")(x) type cast
 		return ctx.compileTypeCast(node, nil)
-	case *ast.ArrayType, *ast.StructType, *ast.FuncType, *ast.InterfaceType, *ast.MapType, *ast.ChanType:
+	case *ast.ArrayType, *ast.StructType, *ast.FuncType, *ast.InterfaceType, *ast.MapType, *ast.ChanType, *ast.NullableTypeExpr, *ast.ResultTypeExpr:
 		return ctx.compileTypeCast(node, nil)
 	case *ast.SelectorExpr:
 		if _, isident := n.X.(*ast.Ident); isident {
@@ -608,9 +637,21 @@ func (ctx *compileCtx) compileIdent(node *ast.Ident) error {
 }
 
 func (ctx *compileCtx) compileUnary(expr ast.Expr, op Op) error {
+	nullCond := false
+	if nc, ok := expr.(*ast.NullCondExpr); ok {
+		nullCond = true
+		expr = nc.X
+	}
 	err := ctx.compileAST(expr, false)
 	if err != nil {
 		return err
+	}
+	if nullCond {
+		switch o := op.(type) {
+		case *Select:
+			ctx.pushOp(&NullCondSelect{Name: o.Name})
+			return nil
+		}
 	}
 	ctx.pushOp(op)
 	return nil

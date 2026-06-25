@@ -89,6 +89,14 @@ type Select struct {
 
 func (*Select) depthCheck() (npop, npush int) { return 1, 1 }
 
+// NullCondSelect is like Select but returns nil when the receiver is nil
+// (for ?.field null-conditional access).
+type NullCondSelect struct {
+	Name string
+}
+
+func (*NullCondSelect) depthCheck() (npop, npush int) { return 1, 1 }
+
 // TypeAssert replaces the topmost stack variable v with v.(DwarfType).
 type TypeAssert struct {
 	DwarfType godwarf.Type
@@ -151,6 +159,14 @@ type Index struct {
 }
 
 func (*Index) depthCheck() (npop, npush int) { return 2, 1 }
+
+// NullCondIndex is like Index but returns nil when the receiver is nil
+// (for ?.[index] null-conditional access).
+type NullCondIndex struct {
+	Node *ast.IndexExpr
+}
+
+func (*NullCondIndex) depthCheck() (npop, npush int) { return 2, 1 }
 
 // Jump looks at the topmost stack variable and if it satisfies the
 // condition specified by When it jumps to the stack machine instruction at

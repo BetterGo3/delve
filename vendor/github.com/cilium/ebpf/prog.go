@@ -862,41 +862,46 @@ var errUnrecognizedAttachType = errors.New("unrecognized attach type")
 // Returns errUnrecognizedAttachType if the combination of progType and attachType
 // is not recognised.
 func findProgramTargetInKernel(name string, progType ProgramType, attachType AttachType) (*btf.Handle, btf.TypeID, error) {
-	type match struct {
-		p ProgramType
-		a AttachType
-	}
-
 	var (
 		typeName, featureName string
 		target                btf.Type
 	)
 
-	switch (match{progType, attachType}) {
-	case match{LSM, AttachLSMMac}:
+	// Use separate switches instead of a switch on struct composite literals.
+	// The BetterGo fork parses `case match{...}:` as an enum switch pattern.
+	switch progType {
+	case LSM:
+		if attachType != AttachLSMMac {
+			return nil, 0, errUnrecognizedAttachType
+		}
 		typeName = "bpf_lsm_" + name
 		featureName = name + " LSM hook"
 		target = (*btf.Func)(nil)
-	case match{Tracing, AttachTraceIter}:
-		typeName = "bpf_iter_" + name
-		featureName = name + " iterator"
-		target = (*btf.Func)(nil)
-	case match{Tracing, AttachTraceFEntry}:
-		typeName = name
-		featureName = fmt.Sprintf("fentry %s", name)
-		target = (*btf.Func)(nil)
-	case match{Tracing, AttachTraceFExit}:
-		typeName = name
-		featureName = fmt.Sprintf("fexit %s", name)
-		target = (*btf.Func)(nil)
-	case match{Tracing, AttachModifyReturn}:
-		typeName = name
-		featureName = fmt.Sprintf("fmod_ret %s", name)
-		target = (*btf.Func)(nil)
-	case match{Tracing, AttachTraceRawTp}:
-		typeName = fmt.Sprintf("btf_trace_%s", name)
-		featureName = fmt.Sprintf("raw_tp %s", name)
-		target = (*btf.Typedef)(nil)
+	case Tracing:
+		switch attachType {
+		case AttachTraceIter:
+			typeName = "bpf_iter_" + name
+			featureName = name + " iterator"
+			target = (*btf.Func)(nil)
+		case AttachTraceFEntry:
+			typeName = name
+			featureName = fmt.Sprintf("fentry %s", name)
+			target = (*btf.Func)(nil)
+		case AttachTraceFExit:
+			typeName = name
+			featureName = fmt.Sprintf("fexit %s", name)
+			target = (*btf.Func)(nil)
+		case AttachModifyReturn:
+			typeName = name
+			featureName = fmt.Sprintf("fmod_ret %s", name)
+			target = (*btf.Func)(nil)
+		case AttachTraceRawTp:
+			typeName = fmt.Sprintf("btf_trace_%s", name)
+			featureName = fmt.Sprintf("raw_tp %s", name)
+			target = (*btf.Typedef)(nil)
+		default:
+			return nil, 0, errUnrecognizedAttachType
+		}
 	default:
 		return nil, 0, errUnrecognizedAttachType
 	}
@@ -992,16 +997,10 @@ func findTargetInModule(base *btf.Spec, typeName string, target *btf.Type) (*btf
 //
 // Returns errUnrecognizedAttachType.
 func findTargetInProgram(prog *Program, name string, progType ProgramType, attachType AttachType) (btf.TypeID, error) {
-	type match struct {
-		p ProgramType
-		a AttachType
-	}
-
 	var typeName string
-	switch (match{progType, attachType}) {
-	case match{Extension, AttachNone}:
+	if progType == Extension && attachType == AttachNone {
 		typeName = name
-	default:
+	} else {
 		return 0, errUnrecognizedAttachType
 	}
 

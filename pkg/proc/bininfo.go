@@ -2551,6 +2551,13 @@ func (bi *BinaryInfo) findTypeExpr(expr ast.Expr) (godwarf.Type, error) {
 		}
 		return pointerTo(ptyp, bi.Arch), nil
 	}
+	if ntyp, ok := expr.(*ast.NullableTypeExpr); ok {
+		// Nullable types are lowered to pointers in the compiler; resolve the element type.
+		return bi.findTypeExpr(ntyp.X)
+	}
+	if rtyp, ok := expr.(*ast.ResultTypeExpr); ok {
+		return bi.findTypeExpr(rtyp.X)
+	}
 	if anode, ok := expr.(*ast.ArrayType); ok {
 		// Array types (for example [N]byte) are only present in DWARF if they are
 		// used by the program, but it's convenient to make all of them available
@@ -3136,6 +3143,14 @@ func (bi *BinaryInfo) expandPackagesInType(expr ast.Expr) ast.Expr {
 		}
 		return &r
 	case *ast.StarExpr:
+		r := *e
+		r.X = bi.expandPackagesInType(e.X)
+		return &r
+	case *ast.NullableTypeExpr:
+		r := *e
+		r.X = bi.expandPackagesInType(e.X)
+		return &r
+	case *ast.ResultTypeExpr:
 		r := *e
 		r.X = bi.expandPackagesInType(e.X)
 		return &r

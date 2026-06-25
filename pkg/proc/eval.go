@@ -1190,6 +1190,9 @@ func (stack *evalStack) executeOp() {
 	case *evalop.Select:
 		scope.evalStructSelector(op, stack)
 
+	case *evalop.NullCondSelect:
+		scope.evalNullCondSelector(op, stack)
+
 	case *evalop.TypeAssert:
 		scope.evalTypeAssert(op, stack)
 
@@ -1210,6 +1213,9 @@ func (stack *evalStack) executeOp() {
 
 	case *evalop.Index:
 		scope.evalIndex(op, stack)
+
+	case *evalop.NullCondIndex:
+		scope.evalNullCondIndex(op, stack)
 
 	case *evalop.Jump:
 		scope.evalJump(op, stack)
@@ -2124,6 +2130,34 @@ func (scope *EvalScope) evalStructSelector(op *evalop.Select, stack *evalStack) 
 	stack.pushErr(xv.findStructMemberOrMethod(op.Name, true))
 }
 
+func (scope *EvalScope) evalNullCondSelector(op *evalop.NullCondSelect, stack *evalStack) {
+	xv := stack.pop()
+	if variableIsNilish(xv) {
+		stack.push(nilVariable)
+		return
+	}
+	stack.push(xv)
+	scope.evalStructSelector(&evalop.Select{Name: op.Name}, stack)
+}
+
+func variableIsNilish(v *Variable) bool {
+	if v == nilVariable {
+		return true
+	}
+	switch v.Kind {
+	case reflect.Ptr, reflect.UnsafePointer, reflect.Chan, reflect.Map, reflect.Interface, reflect.Slice, reflect.Func:
+		if !v.loaded {
+			v.loadValue(loadSingleValue)
+		}
+		if v.Unreadable != nil {
+			return false
+		}
+		return v.Addr == 0 || (len(v.Children) > 0 && v.Children[0].Addr == 0)
+	default:
+		return false
+	}
+}
+
 // Evaluates expressions <subexpr>.(<type>)
 func (scope *EvalScope) evalTypeAssert(op *evalop.TypeAssert, stack *evalStack) {
 	xv := stack.pop()
@@ -2155,6 +2189,19 @@ func (scope *EvalScope) evalTypeAssert(op *evalop.TypeAssert, stack *evalStack) 
 	// terminates, the value of this variable will be loaded.
 	xv.Children[0].OnlyAddr = false
 	stack.push(&xv.Children[0])
+}
+
+// Evaluates expressions <subexpr>[<subexpr>] (subscript access to arrays, slices and maps)
+func (scope *EvalScope) evalNullCondIndex(op *evalop.NullCondIndex, stack *evalStack) {
+	idxev := stack.pop()
+	xev := stack.pop()
+	if variableIsNilish(xev) {
+		stack.push(nilVariable)
+		return
+	}
+	stack.push(xev)
+	stack.push(idxev)
+	scope.evalIndex(&evalop.Index{Node: op.Node}, stack)
 }
 
 // Evaluates expressions <subexpr>[<subexpr>] (subscript access to arrays, slices and maps)
@@ -2493,6 +2540,15 @@ func (scope *EvalScope) evalBinary(binop *evalop.Binary, stack *evalStack) {
 
 	yv := stack.pop()
 	xv := stack.pop()
+
+	if node.Op == token.NULLCOALESCE {
+		if variableIsNilish(xv) {
+			stack.push(yv)
+		} else {
+			stack.push(xv)
+		}
+		return
+	}
 
 	if xv.Kind != reflect.String { // delay loading strings until we use them
 		xv.loadValue(loadFullValue)
