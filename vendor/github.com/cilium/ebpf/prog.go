@@ -868,7 +868,7 @@ func findProgramTargetInKernel(name string, progType ProgramType, attachType Att
 	)
 
 	// Use separate switches instead of a switch on struct composite literals.
-	// The BetterGo fork parses `case match{...}:` as an enum switch pattern.
+	// The Better fork parses `case match{...}:` as an enum switch pattern.
 	switch progType {
 	case LSM:
 		if attachType != AttachLSMMac {
