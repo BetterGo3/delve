@@ -553,7 +553,7 @@ func (ctx *compileCtx) compileTypeCastOrFuncCall(node *ast.CallExpr, toplevel bo
 	case *ast.BasicLit:
 		// It can only be a ("type string")(x) type cast
 		return ctx.compileTypeCast(node, nil)
-	case *ast.ArrayType, *ast.StructType, *ast.FuncType, *ast.InterfaceType, *ast.MapType, *ast.ChanType, *ast.NullableTypeExpr, *ast.ResultTypeExpr:
+	case *ast.ArrayType, *ast.StructType, *ast.FuncType, *ast.InterfaceType, *ast.MapType, *ast.ChanType, *ast.NilableTypeExpr, *ast.ResultTypeExpr:
 		return ctx.compileTypeCast(node, nil)
 	case *ast.SelectorExpr:
 		if _, isident := n.X.(*ast.Ident); isident {

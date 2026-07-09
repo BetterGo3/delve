@@ -2551,8 +2551,8 @@ func (bi *BinaryInfo) findTypeExpr(expr ast.Expr) (godwarf.Type, error) {
 		}
 		return pointerTo(ptyp, bi.Arch), nil
 	}
-	if ntyp, ok := expr.(*ast.NullableTypeExpr); ok {
-		// Nullable types are lowered to pointers in the compiler; resolve the element type.
+	if ntyp, ok := expr.(*ast.NilableTypeExpr); ok {
+		// Nilable types are lowered to Option[T] structs in the compiler; resolve the element type.
 		return bi.findTypeExpr(ntyp.X)
 	}
 	if rtyp, ok := expr.(*ast.ResultTypeExpr); ok {
@@ -3146,7 +3146,7 @@ func (bi *BinaryInfo) expandPackagesInType(expr ast.Expr) ast.Expr {
 		r := *e
 		r.X = bi.expandPackagesInType(e.X)
 		return &r
-	case *ast.NullableTypeExpr:
+	case *ast.NilableTypeExpr:
 		r := *e
 		r.X = bi.expandPackagesInType(e.X)
 		return &r
