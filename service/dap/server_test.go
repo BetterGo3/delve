@@ -5304,17 +5304,17 @@ func TestStepOutPreservesGoroutine(t *testing.T) {
 func checkStopOnNextWhileNextingError(t *testing.T, client *daptest.Client, threadID int) {
 	t.Helper()
 	oe := client.ExpectOutputEvent(t)
-	if oe.Body.Category != "console" || oe.Body.Output != fmt.Sprintf("invalid command: %s\n", BetterNextWhileNextingError) {
-		t.Errorf("\ngot  %#v\nwant Category=\"console\" Output=\"invalid command: %s\\n\"", oe, BetterNextWhileNextingError)
+	if oe.Body.Category != "console" || oe.Body.Output != fmt.Sprintf("invalid command: %s\n", BowNextWhileNextingError) {
+		t.Errorf("\ngot  %#v\nwant Category=\"console\" Output=\"invalid command: %s\\n\"", oe, BowNextWhileNextingError)
 	}
 	se := client.ExpectStoppedEvent(t)
-	if se.Body.ThreadId != threadID || se.Body.Reason != "exception" || se.Body.Description != "invalid command" || se.Body.Text != BetterNextWhileNextingError {
-		t.Errorf("\ngot  %#v\nwant ThreadId=%d Reason=\"exception\" Description=\"invalid command\" Text=\"%s\"", se, threadID, BetterNextWhileNextingError)
+	if se.Body.ThreadId != threadID || se.Body.Reason != "exception" || se.Body.Description != "invalid command" || se.Body.Text != BowNextWhileNextingError {
+		t.Errorf("\ngot  %#v\nwant ThreadId=%d Reason=\"exception\" Description=\"invalid command\" Text=\"%s\"", se, threadID, BowNextWhileNextingError)
 	}
 	client.ExceptionInfoRequest(1)
 	eInfo := client.ExpectExceptionInfoResponse(t)
-	if eInfo.Body.ExceptionId != "invalid command" || eInfo.Body.Description != BetterNextWhileNextingError {
-		t.Errorf("\ngot  %#v\nwant ExceptionId=\"invalid command\" Text=\"%s\"", eInfo, BetterNextWhileNextingError)
+	if eInfo.Body.ExceptionId != "invalid command" || eInfo.Body.Description != BowNextWhileNextingError {
+		t.Errorf("\ngot  %#v\nwant ExceptionId=\"invalid command\" Text=\"%s\"", eInfo, BowNextWhileNextingError)
 	}
 }
 

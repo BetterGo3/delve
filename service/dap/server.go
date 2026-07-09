@@ -4103,11 +4103,11 @@ func (s *Session) onExceptionInfoRequest(request *dap.ExceptionInfoRequest) {
 		body.ExceptionId = "runtime error"
 		body.Description = s.exceptionErr.Error()
 		if body.Description == "bad access" {
-			body.Description = BetterBadAccessError
+			body.Description = BowBadAccessError
 		}
 		if body.Description == "next while nexting" {
 			body.ExceptionId = "invalid command"
-			body.Description = BetterNextWhileNextingError
+			body.Description = BowNextWhileNextingError
 			includeStackTrace = false
 		}
 	}
@@ -4252,10 +4252,10 @@ func (s *Session) newEvent(event string) *dap.Event {
 	}
 }
 
-const BetterBadAccessError = `invalid memory address or nil pointer dereference [signal SIGSEGV: segmentation violation]
+const BowBadAccessError = `invalid memory address or nil pointer dereference [signal SIGSEGV: segmentation violation]
 Unable to propagate EXC_BAD_ACCESS signal to target process and panic (see https://github.com/go-delve/delve/issues/852)`
 
-const BetterNextWhileNextingError = `Unable to step while the previous step is interrupted by a breakpoint.
+const BowNextWhileNextingError = `Unable to step while the previous step is interrupted by a breakpoint.
 Use 'Continue' to resume the original step command.`
 
 func (s *Session) resetHandlesForStoppedEvent() {
@@ -4440,11 +4440,11 @@ func (s *Session) runUntilStopAndNotify(command string, allowNextStateChange *sy
 		stopped.Body.Text = err.Error()
 		// Special case in the spirit of https://github.com/microsoft/vscode-go/issues/1903
 		if stopped.Body.Text == "bad access" {
-			stopped.Body.Text = BetterBadAccessError
+			stopped.Body.Text = BowBadAccessError
 		}
 		if stopped.Body.Text == "next while nexting" {
 			stopped.Body.Description = "invalid command"
-			stopped.Body.Text = BetterNextWhileNextingError
+			stopped.Body.Text = BowNextWhileNextingError
 			s.logToConsole(fmt.Sprintf("%s: %s", stopped.Body.Description, stopped.Body.Text))
 		}
 
