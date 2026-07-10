@@ -4389,8 +4389,10 @@ func TestEvaluateRequest(t *testing.T) {
 	})
 }
 
-func formatConfig(depth int, showGlobals, showRegisters bool, goroutineFilters string, showPprofLabels []string, hideSystemGoroutines bool, substitutePath [][2]string, followExec bool, followExecRegex string) string {
+func formatConfig(depth, maxStringLen, maxArrayValues int, showGlobals, showRegisters bool, goroutineFilters string, showPprofLabels []string, hideSystemGoroutines bool, substitutePath [][2]string, followExec bool, followExecRegex string) string {
 	formatStr := `stackTraceDepth	%d
+maxStringLen	%d
+maxArrayValues	%d
 showGlobalVariables	%v
 showRegisters	%v
 goroutineFilters	%q
@@ -4400,7 +4402,7 @@ substitutePath	%v
 followExec	%v
 followExecRegex	%q
 `
-	return fmt.Sprintf(formatStr, depth, showGlobals, showRegisters, goroutineFilters, showPprofLabels, hideSystemGoroutines, substitutePath, followExec, followExecRegex)
+	return fmt.Sprintf(formatStr, depth, maxStringLen, maxArrayValues, showGlobals, showRegisters, goroutineFilters, showPprofLabels, hideSystemGoroutines, substitutePath, followExec, followExecRegex)
 }
 
 func TestEvaluateCommandRequest(t *testing.T) {
@@ -4431,7 +4433,7 @@ func TestEvaluateCommandRequest(t *testing.T) {
 
 					client.EvaluateRequest("dlv config -list", 1000, "repl")
 					got = client.ExpectEvaluateResponse(t)
-					checkEval(t, got, formatConfig(50, false, false, "", []string{}, false, [][2]string{}, false, ""), noChildren)
+					checkEval(t, got, formatConfig(50, 0, 0, false, false, "", []string{}, false, [][2]string{}, false, ""), noChildren)
 
 					// Read and modify showGlobalVariables.
 					client.EvaluateRequest("dlv config -list showGlobalVariables", 1000, "repl")
@@ -4452,7 +4454,7 @@ func TestEvaluateCommandRequest(t *testing.T) {
 
 					client.EvaluateRequest("dlv config -list", 1000, "repl")
 					got = client.ExpectEvaluateResponse(t)
-					checkEval(t, got, formatConfig(50, true, false, "", []string{}, false, [][2]string{}, false, ""), noChildren)
+					checkEval(t, got, formatConfig(50, 0, 0, true, false, "", []string{}, false, [][2]string{}, false, ""), noChildren)
 
 					client.ScopesRequest(1000)
 					scopes = client.ExpectScopesResponse(t)
@@ -6636,6 +6638,10 @@ func (h *helperForSetVariable) expectSetVariable0(ref int, name, value string, w
 	if got, want := h.c.ExpectSetVariableResponse(h.t), value; got.Success != true || got.Body.Value != want {
 		h.t.Errorf("SetVariableRequest(%v, %v)=%#v, want {Success=true, Body.Value=%q", name, value, got, want)
 	}
+	ie := h.c.ExpectInvalidatedEvent(h.t)
+	if len(ie.Body.Areas) != 1 && ie.Body.Areas[0] != "all" {
+		h.t.Errorf("expected 'all' invalidated areas, got %v", ie.Body.Areas)
+	}
 }
 
 func (h *helperForSetVariable) failSetVariable0(ref int, name, value, wantErrInfo string, wantStop bool) {
@@ -8596,6 +8602,10 @@ func TestWriteMemory(t *testing.T) {
 						if wr.Body.BytesWritten != len(newData) {
 							t.Fatalf("expected %d bytes written, got %d", len(newData), wr.Body.BytesWritten)
 						}
+						ie := client.ExpectInvalidatedEvent(t)
+						if len(ie.Body.Areas) != 1 && ie.Body.Areas[0] != "variables" {
+							t.Fatalf("expected 'varianles' invalidated areas, got %v", ie.Body.Areas)
+						}
 
 						client.ReadMemoryRequest(bytesVar.MemoryReference, 0, len(newData))
 						rm = client.ExpectReadMemoryResponse(t)
@@ -8611,6 +8621,10 @@ func TestWriteMemory(t *testing.T) {
 						wr = client.ExpectWriteMemoryResponse(t)
 						if wr.Body.BytesWritten != len(origData) {
 							t.Fatalf("expected %d bytes written, got %d", len(newData), wr.Body.BytesWritten)
+						}
+						ie = client.ExpectInvalidatedEvent(t)
+						if len(ie.Body.Areas) != 1 && ie.Body.Areas[0] != "variables" {
+							t.Fatalf("expected 'variables' invalidated areas, got %v", ie.Body.Areas)
 						}
 					},
 					disconnect: true,
