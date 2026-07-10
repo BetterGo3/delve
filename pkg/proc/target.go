@@ -368,7 +368,7 @@ func setAsyncPreemptOff(p *Target, v int64) {
 		return
 	}
 	if debugv.Unreadable != nil {
-		logger.Warnf("runtime/debug variable unreadable: %v", err, debugv.Unreadable)
+		logger.Warnf("runtime/debug variable unreadable: %v", debugv.Unreadable)
 		return
 	}
 	asyncpreemptoffv, err := debugv.structField("asyncpreemptoff") // +rtype int32
